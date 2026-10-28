@@ -1,0 +1,16 @@
+# Dev variant: Postgres, Keycloak and Kong in Docker, the six services on the laptop (pnpm start), as in the reference repo.
+# Use when you are changing service code (no image rebuilds) or when Docker cannot pull images.
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.host-apps.yml up -d postgres migrate db-roles keycloak kong
+#   copy services/<name>/.env.example to services/<name>/.env, then: pnpm build && pnpm start
+# Kong then forwards to the services on the host instead of the service containers (do not start those containers at the same time:
+# they use the same ports).
+services:
+  kong:
+    depends_on: !reset {}
+    extra_hosts:
+      - "auth-service:host-gateway"
+      - "cafe-management-service:host-gateway"
+      - "session-service:host-gateway"
+      - "billing-service:host-gateway"
+      - "integration-service:host-gateway"
+      - "bff-service:host-gateway"

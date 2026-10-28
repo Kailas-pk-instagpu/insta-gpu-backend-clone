@@ -1,0 +1,15 @@
+{
+  "name": "@instagpu/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure business rules: money in sen, billing day, session state, payment hold, ledger (added later)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,4 @@
+/* DEV ONLY quick-login picker (js/dev-quick-login.js). Colours come from the parent theme (instagpu.css). */
+.ig-dev-picker { margin-bottom: 16px; padding: 10px 12px; border: 1px dashed hsl(var(--ig-warn) / .6); border-radius: var(--ig-radius); background: hsl(var(--ig-warn) / .08); }
+.ig-dev-picker label { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--ig-warn)); margin-bottom: 6px; }
+.ig-dev-picker select { width: 100%; height: 36px; border-radius: var(--ig-radius); padding: 0 8px; color: hsl(var(--ig-ink)); background: hsl(var(--ig-raised)); border: 1px solid hsl(var(--ig-line)); }

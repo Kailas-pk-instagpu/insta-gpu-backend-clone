@@ -1,0 +1,80 @@
+/* InstaGPU login theme. Same palette, font and brand as the frontend (cloud-game-ops: src/index.css, LoginPage): dark navy with the
+   indigo -> violet gradient by default, the frontend's warm light palette when the browser prefers light. Colours are HSL components,
+   exactly as the frontend's CSS variables, used as hsl(var(--x)) / hsl(var(--x) / alpha). */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --ig-bg: 222 47% 6%; --ig-panel: 222 47% 9%; --ig-raised: 222 40% 14%; --ig-line: 222 40% 16%;
+  --ig-ink: 220 14% 96%; --ig-muted: 220 9% 56%; --ig-faint: 220 9% 42%;
+  --ig-accent: 234 89% 64%; --ig-accent-2: 262 83% 58%; --ig-on-accent: 0 0% 100%;
+  --ig-warn: 38 92% 50%; --ig-info: 199 89% 48%; --ig-danger: 0 72% 55%;
+  --ig-radius: 0.625rem;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --ig-bg: 38 14% 93%; --ig-panel: 38 12% 95%; --ig-raised: 36 10% 90%; --ig-line: 36 12% 85%;
+    --ig-ink: 30 15% 18%; --ig-muted: 30 8% 48%; --ig-faint: 30 6% 60%;
+  }
+}
+html, body { background: hsl(var(--ig-bg)) !important; color: hsl(var(--ig-ink)); }
+html { --pf-v5-global--BackgroundColor--100: hsl(var(--ig-panel)); --pf-v5-global--BackgroundColor--200: hsl(var(--ig-raised)); --pf-v5-global--Color--100: hsl(var(--ig-ink)); --pf-v5-global--Color--200: hsl(var(--ig-muted)); --pf-v5-global--BorderColor--100: hsl(var(--ig-line)); --pf-v5-global--link--Color: hsl(var(--ig-accent)); --pf-v5-global--link--Color--hover: hsl(var(--ig-accent)); --pf-v5-global--primary-color--100: hsl(var(--ig-accent));
+  --pf-v5-global--FontFamily--text: 'Inter', system-ui, -apple-system, sans-serif; --pf-v5-global--FontFamily--heading: 'Inter', system-ui, -apple-system, sans-serif; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); min-height: 100vh; margin: 0; }
+
+/* left brand panel */
+.ig-brand { position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 40px; overflow: hidden; background-color: hsl(var(--ig-panel)); border-right: 1px solid hsl(var(--ig-line)); }
+.ig-brand::before { content: ""; position: absolute; inset: -20%; pointer-events: none;
+  background: radial-gradient(40% 35% at 20% 80%, hsl(var(--ig-accent) / .28), transparent 70%), radial-gradient(35% 30% at 85% 15%, hsl(var(--ig-accent-2) / .22), transparent 70%); }
+.ig-brand > * { position: relative; }
+.ig-logo { display: flex; align-items: center; gap: 12px; }
+.ig-logo-mark { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: hsl(var(--ig-on-accent));
+  background: linear-gradient(135deg, hsl(var(--ig-accent)), hsl(var(--ig-accent-2))); box-shadow: 0 10px 24px -8px hsl(var(--ig-accent) / .6); }
+.ig-logo-mark svg { width: 20px; height: 20px; }
+.ig-logo-name { font-size: 14px; font-weight: 600; line-height: 1.2; color: hsl(var(--ig-ink)); }
+.ig-logo-sub { font-size: 12px; color: hsl(var(--ig-muted)); line-height: 1.2; }
+.ig-seats { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; width: 420px; max-width: 100%; margin-bottom: 28px; }
+.ig-seat { height: 32px; border-radius: 8px; border: 1px solid hsl(var(--ig-line)); background: hsl(var(--ig-raised) / .7); }
+.ig-seat.live { border-color: hsl(var(--ig-accent) / .45); background: hsl(var(--ig-accent) / .16); }
+.ig-seat.warn { border-color: hsl(var(--ig-warn) / .5); background: hsl(var(--ig-warn) / .15); animation: ig-pulse 1.6s ease-in-out infinite; }
+.ig-seat.info { border-color: hsl(var(--ig-accent-2) / .55); background: hsl(var(--ig-accent-2) / .18); animation: ig-pulse 1.6s ease-in-out infinite; }
+@keyframes ig-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) { .ig-seat { animation: none !important; } }
+.ig-brand h2 { max-width: 28rem; margin: 0; font-size: 30px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; color: hsl(var(--ig-ink)); }
+.ig-brand h2 span { background: linear-gradient(135deg, hsl(var(--ig-accent)), hsl(var(--ig-accent-2))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ig-brand p { max-width: 28rem; margin: 12px 0 0; font-size: 14px; color: hsl(var(--ig-muted)); }
+.ig-brand-foot { font-size: 12px; color: hsl(var(--ig-faint)); }
+
+/* right column: the Keycloak form as a card, like the frontend's login card */
+.pf-v5-c-login { background: none !important; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+.pf-v5-c-login__container { display: block !important; width: 100%; max-width: 420px; margin: 0; padding: 0; grid-template-columns: none !important; }
+.pf-v5-c-login__header { display: none; padding: 0 0 24px; }
+.ig-mobile-brand, #kc-header-wrapper.ig-mobile-brand { display: flex; align-items: center; gap: 12px; font-size: 16px !important; font-weight: 600; letter-spacing: normal !important; text-transform: none !important; color: hsl(var(--ig-ink)); }
+.pf-v5-c-login__main { background: hsl(var(--ig-panel) / .7) !important; border: 1px solid hsl(var(--ig-line)) !important; border-radius: 1rem !important;
+  box-shadow: 0 30px 80px -20px hsl(var(--ig-accent) / .35) !important; padding: 32px !important; width: 100% !important; max-width: 100% !important; backdrop-filter: blur(16px); }
+.pf-v5-c-login__main-header { border: 0 !important; padding: 0 0 8px !important; display: block; }
+.pf-v5-c-login__main-header-desc { display: none; }
+.pf-v5-c-title, #kc-page-title { font-size: 28px !important; font-weight: 700 !important; letter-spacing: -.02em; color: hsl(var(--ig-ink)) !important; margin: 0; }
+.pf-v5-c-login__main-body { padding: 8px 0 0 !important; }
+.pf-v5-c-form__label-text, .pf-v5-c-form__label { font-size: 12px !important; font-weight: 500 !important; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--ig-muted)) !important; }
+.pf-v5-c-form-control { background: hsl(var(--ig-bg) / .6) !important; border: 1px solid hsl(var(--ig-line)) !important; border-radius: var(--ig-radius) !important; color: hsl(var(--ig-ink)) !important; min-height: 44px; }
+.pf-v5-c-form-control input { color: hsl(var(--ig-ink)) !important; font-size: 14px; }
+.pf-v5-c-form-control:focus-within { outline: 2px solid hsl(var(--ig-accent) / .6); outline-offset: 0; border-color: hsl(var(--ig-accent) / .6) !important; }
+.pf-v5-c-form-control::before, .pf-v5-c-form-control::after { display: none !important; }
+.pf-v5-c-button.pf-m-primary { background: linear-gradient(135deg, hsl(var(--ig-accent)), hsl(var(--ig-accent-2))) !important; color: hsl(var(--ig-on-accent)) !important;
+  border-radius: 0.75rem !important; font-weight: 600; height: 48px; border: 0; box-shadow: 0 10px 24px -8px hsl(var(--ig-accent) / .5); transition: transform .2s, box-shadow .2s; }
+.pf-v5-c-button.pf-m-primary:hover { transform: scale(1.01); box-shadow: 0 12px 30px -8px hsl(var(--ig-accent) / .7); }
+.pf-v5-c-input-group .pf-v5-c-button.pf-m-control { min-height: 44px; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
+.pf-v5-c-input-group .pf-v5-c-form-control:has(+ *) , .pf-v5-c-input-group__item:not(:last-child) .pf-v5-c-form-control { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+.pf-v5-c-button.pf-m-secondary, .pf-v5-c-button.pf-m-control { border-radius: var(--ig-radius) !important; color: hsl(var(--ig-ink)) !important; border-color: hsl(var(--ig-line)) !important; background: hsl(var(--ig-raised)) !important; }
+a, .pf-v5-c-button.pf-m-link { color: hsl(var(--ig-accent)); text-decoration: none; }
+a:hover, .pf-v5-c-button.pf-m-link:hover { color: hsl(var(--ig-accent) / .8); text-decoration: underline; }
+.pf-v5-c-alert { border-radius: var(--ig-radius); background: hsl(var(--ig-raised)); border: 1px solid hsl(var(--ig-line)); }
+.pf-v5-c-alert.pf-m-danger { border-color: hsl(var(--ig-danger) / .5); background: hsl(var(--ig-danger) / .1); }
+.pf-v5-c-login__main-footer, .pf-v5-c-login__main-footer-band { background: transparent !important; border-color: hsl(var(--ig-line)) !important; padding-left: 0 !important; padding-right: 0 !important; }
+.pf-v5-c-helper-text__item-text.pf-m-err, .pf-m-error .pf-v5-c-helper-text__item-text { color: hsl(var(--ig-danger)) !important; }
+
+@media (max-width: 1023px) {
+  body { grid-template-columns: 1fr; }
+  .ig-brand { display: none; }
+  .pf-v5-c-login__header { display: block; }
+}

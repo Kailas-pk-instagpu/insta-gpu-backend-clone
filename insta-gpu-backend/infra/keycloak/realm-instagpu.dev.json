@@ -1,0 +1,437 @@
+{
+  "realm": "instagpu",
+  "loginTheme": "instagpu-dev",
+  "groups": [
+    {
+      "name": "super_admin",
+      "realmRoles": [
+        "super_admin"
+      ]
+    },
+    {
+      "name": "admin",
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "name": "cafe_owner",
+      "realmRoles": [
+        "cafe_owner"
+      ]
+    },
+    {
+      "name": "manager",
+      "realmRoles": [
+        "manager"
+      ]
+    }
+  ],
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@instagpu.local",
+    "fromDisplayName": "InstaGPU",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
+  "displayName": "InstaGPU",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": false,
+  "rememberMe": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 900,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "passwordPolicy": "length(12) and notUsername(undefined) and passwordHistory(5)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "internationalizationEnabled": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "super_admin",
+        "description": "Super Admin: InstaGPU platform, every cafe; approves branches; inherits admin, cafe_owner and manager"
+      },
+      {
+        "name": "admin",
+        "description": "Sales Manager: onboards cafes, creates cafe owners and their branches (branches need super admin approval)"
+      },
+      {
+        "name": "cafe_owner",
+        "description": "Cafe Owner: all branches of own cafe, creates managers, pays statements; inherits manager"
+      },
+      {
+        "name": "manager",
+        "description": "Floor Manager: runs the branches assigned to them (seats, sessions)"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "instagpu-bff",
+      "name": "InstaGPU BFF (bff-service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-bff-secret-change-me",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "http://localhost:8080/bff/auth/callback",
+        "http://localhost:3000/bff/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8080/*##http://localhost:3000/*",
+        "use.refresh.tokens": "true",
+        "client.use.lightweight.access.token.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "acr",
+        "profile",
+        "email",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-instagpu-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "instagpu-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-auth-service",
+      "name": "auth-service (service-to-service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-svc-auth-service-secret-change-me",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "client.use.lightweight.access.token.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-instagpu-internal",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "instagpu-internal",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-cafe-management-service",
+      "name": "cafe-management-service (service-to-service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-svc-cafe-management-service-secret-change-me",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "client.use.lightweight.access.token.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-instagpu-internal",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "instagpu-internal",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-session-service",
+      "name": "session-service (service-to-service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-svc-session-service-secret-change-me",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "client.use.lightweight.access.token.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-instagpu-internal",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "instagpu-internal",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-billing-service",
+      "name": "billing-service (service-to-service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-svc-billing-service-secret-change-me",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "client.use.lightweight.access.token.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-instagpu-internal",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "instagpu-internal",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-integration-service",
+      "name": "integration-service (service-to-service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-svc-integration-service-secret-change-me",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "client.use.lightweight.access.token.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-instagpu-internal",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "instagpu-internal",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "svc-user-provisioner",
+      "name": "Platform user provisioning (IAM-03)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-provisioner-secret-change-me",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "120"
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "0d1f6a52-0000-4000-8000-000000000001",
+      "username": "farah@instagpu.my",
+      "email": "farah@instagpu.my",
+      "emailVerified": true,
+      "firstName": "Farah",
+      "lastName": "Aziz",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Instagpu-dev-2026!",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "super_admin"
+      ]
+    },
+    {
+      "id": "0d1f6a52-0000-4000-8000-000000000006",
+      "username": "sara.tan@instagpu.my",
+      "email": "sara.tan@instagpu.my",
+      "emailVerified": true,
+      "firstName": "Sara",
+      "lastName": "Tan",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Instagpu-dev-2026!",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "admin"
+      ]
+    },
+    {
+      "id": "0d1f6a52-0000-4000-8000-000000000003",
+      "username": "jason@klgamingarena.my",
+      "email": "jason@klgamingarena.my",
+      "emailVerified": true,
+      "firstName": "Jason",
+      "lastName": "Wong",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Instagpu-dev-2026!",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "cafe_owner"
+      ]
+    },
+    {
+      "id": "0d1f6a52-0000-4000-8000-000000000004",
+      "username": "priya@klgamingarena.my",
+      "email": "priya@klgamingarena.my",
+      "emailVerified": true,
+      "firstName": "Priya",
+      "lastName": "Nair",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Instagpu-dev-2026!",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "manager"
+      ]
+    },
+    {
+      "username": "service-account-svc-user-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "svc-user-provisioner",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "query-groups",
+          "view-realm"
+        ]
+      }
+    },
+    {
+      "username": "service-account-svc-auth-service",
+      "enabled": true,
+      "serviceAccountClientId": "svc-auth-service"
+    },
+    {
+      "username": "service-account-svc-cafe-management-service",
+      "enabled": true,
+      "serviceAccountClientId": "svc-cafe-management-service"
+    },
+    {
+      "username": "service-account-svc-session-service",
+      "enabled": true,
+      "serviceAccountClientId": "svc-session-service"
+    },
+    {
+      "username": "service-account-svc-billing-service",
+      "enabled": true,
+      "serviceAccountClientId": "svc-billing-service"
+    },
+    {
+      "username": "service-account-svc-integration-service",
+      "enabled": true,
+      "serviceAccountClientId": "svc-integration-service"
+    }
+  ]
+}

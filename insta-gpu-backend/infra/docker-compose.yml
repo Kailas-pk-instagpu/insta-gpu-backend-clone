@@ -1,0 +1,201 @@
+# Local stack. From the repository root:
+#   docker compose --env-file .env -f infra/docker-compose.yml up --build
+# (`--env-file .env` is optional: every variable below has a dev default.)
+# Order: postgres -> migrate (db/migrations) -> db-roles (db/roles) -> the six services; keycloak and kong alongside.
+# Everything here is DEV ONLY: fixed passwords, Keycloak start-dev. Never reuse in staging/prod.
+name: instagpu
+
+x-service-db: &service-db
+  depends_on:
+    db-roles: { condition: service_completed_successfully }
+  restart: unless-stopped
+
+x-oidc-env: &oidc-env
+  NODE_ENV: development
+  # Tokens are issued for the browser-facing Keycloak address; services fetch the keys over the compose network.
+  OIDC_ISSUER: ${OIDC_ISSUER:-http://localhost:8081/realms/instagpu}
+  OIDC_JWKS_URL: http://keycloak:8081/realms/instagpu/protocol/openid-connect/certs
+  OIDC_TOKEN_URL: http://keycloak:8081/realms/instagpu/protocol/openid-connect/token
+  OIDC_AUDIENCE: instagpu-api
+  INTERNAL_AUDIENCE: instagpu-internal
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: instagpu
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5433}:5432"]
+    volumes:
+      - pg:/var/lib/postgresql
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres -d instagpu"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:v4.18.3
+    volumes: ["../db/migrations:/migrations:ro"]
+    command: ["-path=/migrations", "-database=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/instagpu?sslmode=disable", "up"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  # Per-service group roles, grants, mirrored RLS policies and logins. Re-runs on every `up` (idempotent).
+  db-roles:
+    image: postgres:18
+    entrypoint: ["sh", "/roles/apply.sh"]
+    volumes: ["../db/roles:/roles:ro"]
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATABASE: instagpu
+      APP_BFF_DB_PASSWORD: ${APP_BFF_DB_PASSWORD:-app_bff_dev}
+      APP_AUTH_DB_PASSWORD: ${APP_AUTH_DB_PASSWORD:-app_auth_dev}
+      APP_CAFE_DB_PASSWORD: ${APP_CAFE_DB_PASSWORD:-app_cafe_dev}
+      APP_SESSION_DB_PASSWORD: ${APP_SESSION_DB_PASSWORD:-app_session_dev}
+      APP_BILLING_DB_PASSWORD: ${APP_BILLING_DB_PASSWORD:-app_billing_dev}
+      APP_INTEGRATION_DB_PASSWORD: ${APP_INTEGRATION_DB_PASSWORD:-app_integration_dev}
+      APP_READONLY_DB_PASSWORD: ${APP_READONLY_DB_PASSWORD:-app_readonly_dev}
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm", "--http-port=8081"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HEALTH_ENABLED: "true"
+      # Public address of the login pages (the issuer in every token). Services reach Keycloak as keycloak:8081.
+      KC_HOSTNAME: ${KC_PUBLIC_URL:-http://localhost:8081}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+    ports: ["127.0.0.1:${KEYCLOAK_PORT:-8081}:8081"]
+    volumes:
+      - ./keycloak/realm-instagpu.dev.json:/opt/keycloak/data/import/realm-instagpu.json:ro
+      - ./keycloak/themes/instagpu:/opt/keycloak/themes/instagpu:ro
+      - ./keycloak/themes/instagpu-dev:/opt/keycloak/themes/instagpu-dev:ro   # DEV ONLY (sign-in-as picker)
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+    depends_on: { postgres: { condition: service_healthy } }
+    restart: unless-stopped
+
+  kong:
+    image: kong:3.9.1
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yaml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 127.0.0.1:8001     # admin API never exposed
+      KONG_STATUS_LISTEN: 0.0.0.0:8100      # /status + /metrics
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_DNS_NOT_FOUND_TTL: "5"           # a service restarting is found again within seconds
+    # Start after the services so Kong does not cache "name not found" for them on a cold `up`.
+    depends_on:
+      bff-service: { condition: service_started }
+      auth-service: { condition: service_started }
+      cafe-management-service: { condition: service_started }
+      session-service: { condition: service_started }
+      billing-service: { condition: service_started }
+      integration-service: { condition: service_started }
+    ports: ["127.0.0.1:${KONG_PORT:-8000}:8000", "127.0.0.1:${KONG_STATUS_PORT:-8100}:8100"]
+    volumes: ["./kong/kong.yaml:/kong/kong.yaml:ro"]
+    healthcheck: { test: ["CMD", "kong", "health"], interval: 10s, retries: 10 }
+    restart: unless-stopped
+
+  bff-service:
+    <<: *service-db
+    build:
+      context: ..
+      dockerfile: services/bff-service/Dockerfile
+    environment:
+      <<: *oidc-env
+      PORT: "3000"
+      DATABASE_URL: postgres://app_bff_login:${APP_BFF_DB_PASSWORD:-app_bff_dev}@postgres:5432/instagpu
+      KONG_URL: http://kong:8000
+      OIDC_INTERNAL_URL: http://keycloak:8081/realms/instagpu
+      OIDC_CLIENT_ID: instagpu-bff
+      OIDC_CLIENT_SECRET: ${BFF_OIDC_CLIENT_SECRET:-dev-bff-secret-change-me}
+      # The browser reaches the BFF through the frontend dev server (Vite proxies /bff -> :3000), so cookies are first-party.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      OIDC_REDIRECT_URI: ${BFF_OIDC_REDIRECT_URI:-http://localhost:8080/bff/auth/callback}
+      SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY:-ZGV2LW9ubHktMzItYnl0ZS1rZXktY2hhbmdlLW1lISE=}
+    ports: ["3000:3000"]
+  auth-service:
+    <<: *service-db
+    build:
+      context: ..
+      dockerfile: services/auth-service/Dockerfile
+    environment:
+      <<: *oidc-env
+      PORT: "3001"
+      DATABASE_URL: postgres://app_auth_login:${APP_AUTH_DB_PASSWORD:-app_auth_dev}@postgres:5432/instagpu
+      SERVICE_CLIENT_ID: svc-auth-service
+      SERVICE_CLIENT_SECRET: ${SVC_AUTH_CLIENT_SECRET:-dev-svc-auth-service-secret-change-me}
+      KEYCLOAK_ADMIN_URL: http://keycloak:8081
+      KEYCLOAK_REALM: instagpu
+      KEYCLOAK_PROVISIONER_CLIENT_ID: svc-user-provisioner
+      KEYCLOAK_PROVISIONER_CLIENT_SECRET: ${KEYCLOAK_PROVISIONER_CLIENT_SECRET:-dev-provisioner-secret-change-me}
+    ports: ["3001:3001"]
+  cafe-management-service:
+    <<: *service-db
+    build:
+      context: ..
+      dockerfile: services/cafe-management-service/Dockerfile
+    environment:
+      <<: *oidc-env
+      PORT: "3002"
+      DATABASE_URL: postgres://app_cafe_login:${APP_CAFE_DB_PASSWORD:-app_cafe_dev}@postgres:5432/instagpu
+      SERVICE_CLIENT_ID: svc-cafe-management-service
+      SERVICE_CLIENT_SECRET: ${SVC_CAFE_CLIENT_SECRET:-dev-svc-cafe-management-service-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:3001
+    ports: ["3002:3002"]
+  session-service:
+    <<: *service-db
+    build:
+      context: ..
+      dockerfile: services/session-service/Dockerfile
+    environment:
+      <<: *oidc-env
+      PORT: "3003"
+      DATABASE_URL: postgres://app_session_login:${APP_SESSION_DB_PASSWORD:-app_session_dev}@postgres:5432/instagpu
+      SERVICE_CLIENT_ID: svc-session-service
+      SERVICE_CLIENT_SECRET: ${SVC_SESSION_CLIENT_SECRET:-dev-svc-session-service-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:3001
+    ports: ["3003:3003"]
+  billing-service:
+    <<: *service-db
+    build:
+      context: ..
+      dockerfile: services/billing-service/Dockerfile
+    environment:
+      <<: *oidc-env
+      PORT: "3004"
+      DATABASE_URL: postgres://app_billing_login:${APP_BILLING_DB_PASSWORD:-app_billing_dev}@postgres:5432/instagpu
+      SERVICE_CLIENT_ID: svc-billing-service
+      SERVICE_CLIENT_SECRET: ${SVC_BILLING_CLIENT_SECRET:-dev-svc-billing-service-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:3001
+    ports: ["3004:3004"]
+  integration-service:
+    <<: *service-db
+    build:
+      context: ..
+      dockerfile: services/integration-service/Dockerfile
+    environment:
+      <<: *oidc-env
+      PORT: "3005"
+      DATABASE_URL: postgres://app_integration_login:${APP_INTEGRATION_DB_PASSWORD:-app_integration_dev}@postgres:5432/instagpu
+      SERVICE_CLIENT_ID: svc-integration-service
+      SERVICE_CLIENT_SECRET: ${SVC_INTEGRATION_CLIENT_SECRET:-dev-svc-integration-service-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:3001
+    ports: ["3005:3005"]
+
+volumes:
+  pg: {}

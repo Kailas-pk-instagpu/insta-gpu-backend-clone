@@ -1,0 +1,100 @@
+# Kong 3.9 OSS, DB-less (ported from InstaGPU-GC-Core infra/kong/kong.yaml). Changes go through Git + PR.
+# Kong does transport policy only: routing, size limits, rate limits, correlation id, security headers, metrics.
+# Every service validates the bearer token itself (JWKS, iss, aud, exp) and authorizes. See docs/adr/ADR-005.
+# Only /api/v1 business routes are exposed; /healthz, /readyz and /internal/* are never routed through Kong.
+# Check the file: docker run --rm -v "$PWD/infra/kong:/k" kong:3.9.1 kong config parse /k/kong.yaml
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: auth-service
+    url: http://auth-service:3001
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0                 # never auto-retry POSTs; clients retry with Idempotency-Key
+    routes:
+      - name: auth-v1
+        paths: ["/api/v1/me", "/api/v1/users", "/api/v1/memberships"]
+        strip_path: false
+        protocols: ["http", "https"]
+        plugins: &route-plugins   # 600 req/min per BFF session (x-bff-session), 1 MB bodies; reused below
+          - name: rate-limiting
+            config:
+              minute: 600
+              limit_by: header
+              header_name: x-bff-session
+              policy: local            # per Kong node; move to a shared policy if Kong is scaled out
+              fault_tolerant: true
+              hide_client_headers: false
+          - name: request-size-limiting
+            config: { allowed_payload_size: 1, size_unit: megabytes, require_content_length: false }
+
+  - name: cafe-management-service
+    url: http://cafe-management-service:3002
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: cafe-management-v1
+        paths: ["/api/v1/owners", "/api/v1/branches", "/api/v1/approvals", "/api/v1/seats", "/api/v1/issues"]
+        strip_path: false
+        protocols: ["http", "https"]
+        plugins: *route-plugins
+
+  - name: session-service
+    url: http://session-service:3003
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: session-v1
+        paths: ["/api/v1/sessions", "/api/v1/floor", "/api/v1/dashboard"]
+        strip_path: false
+        protocols: ["http", "https"]
+        plugins: *route-plugins
+
+  - name: billing-service
+    url: http://billing-service:3004
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: billing-v1
+        paths: ["/api/v1/billing", "/api/v1/payments"]
+        strip_path: false
+        protocols: ["http", "https"]
+        plugins: *route-plugins
+
+  - name: integration-service
+    url: http://integration-service:3005
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: integration-v1
+        paths: ["/api/v1/horizon"]
+        strip_path: false
+        protocols: ["http", "https"]
+        plugins: *route-plugins
+
+plugins:
+  - name: correlation-id
+    config: { header_name: X-Correlation-ID, generator: uuid, echo_downstream: true }
+  - name: prometheus
+    config: { status_code_metrics: true, latency_metrics: true, upstream_health_metrics: true, per_consumer: false }
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - "Strict-Transport-Security: max-age=31536000; includeSubDomains"
+          - "X-Content-Type-Options: nosniff"
+          - "X-Frame-Options: DENY"
+          - "Referrer-Policy: no-referrer"
+          - "Cache-Control: no-store"
+      remove:
+        headers: ["Server", "X-Powered-By", "Via"]

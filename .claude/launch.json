@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Admin/Downloads/cloud-game-ops-main/cloud-game-ops-main", "run", "dev", "--", "--port", "8080", "--strictPort"],
+      "port": 8080
+    }
+  ]
+}
